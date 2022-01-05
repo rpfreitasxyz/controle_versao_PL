@@ -20,17 +20,25 @@ antigo <- arq_antigo %>%
                             paragrafo),
          inciso = str_extract(value, ".*?-") %>% str_remove(" -") %>% as.roman() %>% as.numeric()) %>%
   # Nao pode repetir artigos (talvez nao, por causa de alteracoes em outras leis)
-  group_by(artigo) %>% mutate(artigo = ifelse(numero_row == min(numero_row),
-                                               artigo,
-                                               NA)) %>%
+  group_by(artigo) %>% 
+  mutate(artigo = ifelse(numero_row == min(numero_row),
+                         artigo,
+                         NA)) %>%
   ungroup() %>%
   # Filtra o que estiver acima do art. 1
   mutate(temp = artigo) %>% fill(temp, .direction = "down") %>%
   filter(!is.na(temp)) %>% select(-temp) %>%
-  fill(artigo, paragrafo, inciso, .direction = "down") %>%
-  mutate(paragrafo = replace_na(paragrafo, 0),
-         inciso = replace_na(inciso, 0)) %>%
+  fill(artigo, .direction = "down") %>%
+  mutate(paragrafo = ifelse(artigo != lag(artigo),
+                            0,
+                            paragrafo)) %>%
+  fill(paragrafo, .direction = "down") %>%
+  mutate(paragrafo = replace_na(paragrafo, 0)) %>%
+  mutate(inciso = ifelse(paragrafo != lag(paragrafo) | artigo != lag(artigo),
+                         0,
+                         inciso)) %>%
   arrange(numero_row) %>%
+  fill(inciso, .direction = "downup") %>%
   group_by(artigo, paragrafo, inciso) %>%
   summarise(value = paste(value, collapse = " "),
             artigo = last(artigo),
