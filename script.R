@@ -13,12 +13,14 @@ antigo <- arq_antigo %>%
   # Remove linhas vazias e numeros de pagina
   filter(value != "", is.na(numeros_pagina)) %>%
   select(-numeros_pagina) %>%
+  # PREMISSA: O maximo de granularidade em um projeto de lei eh ate alineas
   mutate(artigo = str_extract(value, "^ART. \\d*") %>% str_remove("ART. ") %>% as.numeric(),
          paragrafo = str_extract(value, "^§ \\d*") %>% str_remove("§ ") %>% as.numeric(),
          paragrafo = ifelse(is.na(paragrafo),
                             str_extract(value, "^PARAGRAFO UNICO"),
                             paragrafo),
-         inciso = str_extract(value, ".*?-") %>% str_remove(" -") %>% as.roman() %>% as.numeric()) %>%
+         inciso = str_extract(value, ".*?-") %>% str_remove(" -") %>% as.roman() %>% as.numeric(),
+         alinea = str_extract(value, "^\\w\\)") %>% str_remove("\\)")) %>%
   # Nao pode repetir artigos (talvez nao, por causa de alteracoes em outras leis)
   group_by(artigo) %>% 
   mutate(artigo = ifelse(numero_row == min(numero_row),
@@ -28,6 +30,7 @@ antigo <- arq_antigo %>%
   # Filtra o que estiver acima do art. 1
   mutate(temp = artigo) %>% fill(temp, .direction = "down") %>%
   filter(!is.na(temp)) %>% select(-temp) %>%
+  arrange(numero_row) %>%
   fill(artigo, .direction = "down") %>%
   mutate(paragrafo = ifelse(artigo != lag(artigo),
                             0,
@@ -37,11 +40,17 @@ antigo <- arq_antigo %>%
   mutate(inciso = ifelse(paragrafo != lag(paragrafo) | artigo != lag(artigo),
                          0,
                          inciso)) %>%
+  fill(inciso, .direction = "down") %>%
+  mutate(inciso = replace_na(inciso, 0)) %>%
+  mutate(alinea = ifelse(paragrafo != lag(paragrafo) | artigo != lag(artigo) | inciso != lag(inciso),
+                         0,
+                         alinea)) %>%
   arrange(numero_row) %>%
-  fill(inciso, .direction = "downup") %>%
-  group_by(artigo, paragrafo, inciso) %>%
+  fill(alinea, .direction = "downup") %>%
+  group_by(artigo, paragrafo, inciso, alinea) %>%
   summarise(value = paste(value, collapse = " "),
             artigo = last(artigo),
             paragrafo = last(paragrafo),
-            inciso = last(inciso)) %>%
+            inciso = last(inciso),
+            alinea = last(alinea)) %>%
   ungroup()
