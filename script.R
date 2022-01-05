@@ -1,4 +1,5 @@
 library(tidyverse)
+library(tesseract)
 library(magick)
 
 arq_antigo <- "PL-1917-2015.pdf"
@@ -13,14 +14,10 @@ trata_projeto_lei = function(arquivo) {
 # Processa a imagem previamente
 pdf_processado <- arquivo %>%
   image_read_pdf() %>%
-  image_crop("1900x3000+300+250") %>%
-  .[26] %>%
-  image_browse()
-
-
-
-projeto_tratado <- arquivo %>%
-  pdftools::pdf_text() %>%
+  image_crop("1900x3015+300+250") %>%
+  tesseract::ocr(engine = tesseract("por"))
+  
+projeto_tratado <- pdf_processado %>%
   read_lines() %>%
   enframe(name = NULL) %>%
   mutate(numero_row = row_number()) %>%
