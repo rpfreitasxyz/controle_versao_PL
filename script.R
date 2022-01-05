@@ -10,8 +10,9 @@ antigo <- arq_antigo %>%
   slice(2:n()) %>%
   mutate(value = str_trim(value, side = "both") %>% stringi::stri_trans_general("Latin-ASCII") %>% str_to_upper()) %>%
   mutate(numeros_pagina = as.numeric(value)) %>%
-  # Remove linhas vazias e numeros de pagina
-  filter(value != "", is.na(numeros_pagina)) %>%
+  # Remove linhas vazias, numeros de pagina e o texto da imagem da camara dos deputados
+  # ISSO PODE MUDAR CASO TENHA ALGO DIFERENTE, DO TIPO IMAGEM DO SENADO
+  filter(value != "", is.na(numeros_pagina), value != "CAMARA DOS DEPUTADOS") %>%
   select(-numeros_pagina) %>%
   # PREMISSA: O maximo de granularidade em um projeto de lei eh ate alineas
   mutate(artigo = str_extract(value, "^ART. \\d*") %>% str_remove("ART. ") %>% as.numeric(),
